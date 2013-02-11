@@ -72,8 +72,12 @@ int main(int argc, char* argv[])
     debugP( "Idx", idx[0] );
     debugP( "Idx", idx[0] );
     debugP( "power", cbpower );
-    c.train( X, COutput, idx, cbpower, 0.01f, 0.01f);
-
+    c.train( X, COutput, idx, cbpower, 0.01, 0.01);
+    /*for( int i = 0; i< 80; i++ ){
+        idx[i] = 0;
+        idx[ 40 + i ] = 1;
+    }
+     c.find_mean( X, COutput, idx, );*/
     for( int i = 0; i < C.size(); i++ ){
         for( int j = 0; j < C[i].size(); j++ )
             cout << C[i][j] << " vs " << COutput[i][j] << endl;

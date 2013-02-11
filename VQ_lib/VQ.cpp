@@ -12,7 +12,7 @@ float VQm::L2distance( const vector<float>& v1, const vector<float>& v2 )
                 v1.begin(), 
                 v1.end(), 
                 v2.begin(), 
-                0.0f, 
+                0.0, 
                 plus<float>(), 
                 coord_squared
                 );
@@ -51,7 +51,7 @@ bool coach::train(
     find_mean( X, C, idx, 1 );
     for( int n = 0; n < N; n++ ){
         split_and_move_centroids( C, n, stepSize );
-        float costPrev = -1.0f, cost = costPrev;
+        float costPrev = -1.0, cost = costPrev;
         bool moveCentroids = true;
         while( moveCentroids ){
             find_nearest_centroid( X, C, idx, n + 1 );
@@ -78,6 +78,7 @@ void coach::find_mean(
     int dimensionality = (*itX).size();
     vector<float> bfV( dimensionality, 0.0 );
     vector<long long> quantity( CBSize, 0 );
+    fill_n( C.begin(), CBSize, bfV );
     while( itX != X.end() ){
         for( int i=0; i < dimensionality; i++ ){
             C[ *itIdx ][i] += (*itX).at( i );

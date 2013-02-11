@@ -67,17 +67,13 @@ namespace VQ_tests
                 _COutput.size() 
                 ); 	
 
-            for(int i = 0; i< _COutput.size(); i++ ){
-                Assert::AreEqual<bool>( 
-                    true, 
-                    equal( 
-                        _C[i].begin(), 
-                        _C[i].end(), 
-                        _COutput[i].begin() 
-                        )
-                    );                            
-            }
-
+            for( int i = 0; i < _C.size(); i++ )
+                for( int j = 0; j < _C[0].size(); j++ )
+                    Assert::AreEqual( 
+                        _C[i][j], 
+                        _COutput[i][j],
+                        Toll
+                   );                        
 		}
 
 		TEST_METHOD(CodeBookSize_train_coach)
