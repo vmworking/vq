@@ -1,0 +1,8 @@
+Debug
+TestResults
+ipch
+VQ/Debug
+VQ_lib/Debug
+VQ_tests/Debug
+*.opensdf
+.asv
