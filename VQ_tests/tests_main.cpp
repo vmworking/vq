@@ -5,7 +5,7 @@
 using namespace std;
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-const float Toll = 0.00001f;
+const float Toll = 0.0001;
 
 int load_test_data( 
     string file,
@@ -59,7 +59,7 @@ namespace VQ_tests
 		TEST_METHOD(CodeBookContent_train_coach)
 		{
 			if ( _X.size() == 0 )
-                _cbpower = load_test_data( "../tests/test2dm.dat", _X, _C, _idx );
+                _cbpower = load_test_data( "../tests/test5dw.dat", _X, _C, _idx );
             _c.train( _X, _COutput, _idx, _cbpower, 0.01f, 0.01f );
 
             Assert::AreEqual<int>( 
@@ -79,7 +79,7 @@ namespace VQ_tests
 		TEST_METHOD(CodeBookSize_train_coach)
 		{
 			if ( _X.size() == 0 ) 
-                _cbpower = load_test_data( "../tests/test2dm.dat", _X, _C, _idx );
+                _cbpower = load_test_data( "../tests/test5d.dat", _X, _C, _idx );
             _c.train( _X, _COutput, _idx, _cbpower, 0.01f, 0.01f );
             Assert::AreEqual<int>( 
                 _C.size(), 

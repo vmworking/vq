@@ -55,11 +55,11 @@ int load_test_data(
 int main(int argc, char* argv[])
 {
     coach c;
-   
+   /*
     vector<vector<float>> m1;
     vector<vector<float>> X, C, COutput;
-    vector<long long> idx;
-    int cbpower = load_test_data( "../tests/test2dm.dat", X, C, idx );
+    vector<long long> idx, idxOutput;
+    int cbpower = load_test_data( "../tests/test5dw.dat", X, C, idx );
     debugP( "X size", X.size() );
     debugP( "Xb ", X[0][0] );
     debugP( "Xb ", X[0][1] );
@@ -72,17 +72,22 @@ int main(int argc, char* argv[])
     debugP( "Idx", idx[0] );
     debugP( "Idx", idx[0] );
     debugP( "power", cbpower );
-    c.train( X, COutput, idx, cbpower, 0.01, 0.01);
-    /*for( int i = 0; i< 80; i++ ){
+    c.train( X, COutput, idxOutput, cbpower, 0.01, 0.01);
+
+    for( int i = 0; i < C.size(); i++ ){
+        for( int j = 0; j < C[i].size(); j++ )
+            if ( abs( C[i][j] - COutput[i][j] ) > 0.0001 )  cout << C[i][j] << " vs " << COutput[i][j] << "  " << i << "  " << j << endl;
+        cout << endl;
+    }
+    for( int i = 0; i < X.size(); i++ )
+        if( ( idx[i] - 1 ) != idxOutput[i] ) cout << i << endl;
+    */
+       /*for( int i = 0; i< 80; i++ ){
         idx[i] = 0;
         idx[ 40 + i ] = 1;
     }
      c.find_mean( X, COutput, idx, );*/
-    for( int i = 0; i < C.size(); i++ ){
-        for( int j = 0; j < C[i].size(); j++ )
-            cout << C[i][j] << " vs " << COutput[i][j] << endl;
-        cout << endl;
-    }
+    
     /*
     //Find_mean_coach
     int dimension = 3, setSize = 9, centroidsNumber = 3;
