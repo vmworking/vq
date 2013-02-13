@@ -45,6 +45,21 @@ int load_test_data(
     return 0;
 }
 
+void load_test_io(
+    string file,
+    vector<float>& l
+    )
+{
+    ifstream input( file );
+    if ( input.good() ){
+        copy( 
+            istream_iterator <float>( input ), 
+            istream_iterator <float>(), 
+            back_inserter( l ) 
+            );
+    }
+}
+
 namespace VQ_tests
 {		
 	TEST_CLASS(UnitTest1)
@@ -274,7 +289,70 @@ namespace VQ_tests
                         Toll
                 );            
 
-		}        
+		}    
+
+        TEST_METHOD(Read_binary_VQIO)
+		{
+            VQIO io;
+            bool result = false;
+            int n = 13;
+            vector<vector<float>> V;
+            if ( result = io.read_binary( "../tests/test.dat", V, n ) ){
+                vector<float> v;
+                //we assume that test-ascii-s2 contains first 2*n and 
+                //last 2*n records in test.dat
+                load_test_io( "../tests/test-ascii-s2.dat", v );
+                Assert::IsTrue( V.size() > 0 );
+                for( int i = 0; i < 2 * n; i++ ){
+                    Assert::AreEqual(
+                        v[i],
+                        V[ (int) i / n ][ i % n ],
+                        Toll
+                    );
+                    Assert::AreEqual(
+                        v[ i + 2 * n],
+                        V[ (int)( V.size() - 2 + i/n ) ][ i % n ],
+                        Toll
+                    );
+                }
+            }else{
+                Assert::AreEqual<bool>( false, result );                   
+            }
+		}  
+
+        TEST_METHOD(FileInput_bit_stream)
+        {
+            bit_stream bs( "../tests/bits.dat", 6 );
+            Assert::AreEqual<bool>( true, bs.good() );
+            Assert::AreEqual<int>( 12, bs.get_buffer_size() );
+            
+            bit_stream bs1( "../tests/bad_name.dat", 6 );
+            Assert::AreEqual<bool>( false, bs1.good() );
+            Assert::AreEqual<int>( 0, bs1.get_buffer_size() );
+        }
+
+        TEST_METHOD(Pick_bits_bit_stream)
+        {
+            unsigned long bfL = pow( 2, 5 ) - 1;
+            bfL = bfL << 8;
+            bfL = bit_stream::pick_bits( bfL, 10, 4 );
+            //boost::dynamic_bitset<unsigned long> bitSet1( 32 , bfL );
+            Assert::AreEqual<int>( 7, bfL );
+        }
+
+        TEST_METHOD(Read_single_bit_stream)
+        {
+            int codeSize = 6,  codeWordsNumber = 13;            
+            //in this file we've encoded numbers from 0 to 12 with 6 bit code
+            bit_stream bs( "../tests/bits.dat", codeSize );
+            Assert::AreEqual<bool>( true, bs.good() );
+            for( int i = 0; i < codeWordsNumber; i++ )
+                Assert::AreEqual<int>( i, bs.read_single() );
+            for( int i = codeWordsNumber; i < 16; i++ )
+                Assert::AreEqual<int>( 0, bs.read_single() );
+            Assert::AreEqual<int>( -1, bs.read_single() );
+
+        }
 
 	};
 }

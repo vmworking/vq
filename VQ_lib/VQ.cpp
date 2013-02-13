@@ -24,6 +24,119 @@ void VQm::vector_by_scalar_inplace( vector<float>& v, const float s )
         *it++ = *it * s;
 }
 
+bit_stream::bit_stream(void)
+{
+    _init_defaults();
+}
+
+bit_stream::bit_stream( const string inputFile, const int codeSize )
+{
+    _init_defaults();
+    if( codeSize > 0 ){
+        //input stream
+        ifstream s( inputFile, ios_base::binary );
+        if( s.good() ){
+            s.seekg( 0, ios::end );
+            long long fileSize = s.tellg();
+            s.seekg( 0, ios::beg );
+            _buffer = new unsigned char[ fileSize  ];
+            s.read( reinterpret_cast<char*>(_buffer), fileSize );
+            s.close();
+            _deleteBufferWhenFinish = true;
+            _bufferSize = fileSize;
+            _codeSize = codeSize;
+            _streamIsGood = true;
+        }
+    }
+}
+
+bit_stream::bit_stream( 
+    unsigned char *buffer, 
+    const long long bufferSize, 
+    const int codeSize 
+    )
+{
+    _init_defaults();
+    _buffer = buffer;
+    _bufferSize = bufferSize;
+    _codeSize = codeSize;
+    _streamIsGood = true;
+}
+
+bit_stream::~bit_stream(void)
+{
+    if( _deleteBufferWhenFinish ) delete[] _buffer;
+}
+
+void bit_stream::_init_defaults(void)
+{
+    _deleteBufferWhenFinish = false;
+    _streamIsGood = false;
+    _inputFile = "";
+    _codeSize = 8;
+    _bufferSize = 0;
+    _bufferPos = 0;
+    _bufferPosIntra = 0;
+    _buffer = NULL;
+    _blockSize = 8;
+}
+//reads certain bits in value
+unsigned long bit_stream::pick_bits( 
+        const unsigned long value, 
+        const int start, 
+        const int offset 
+        )
+{
+    unsigned long bf = 0;
+    int containerLength = 8 * sizeof( bf );
+    bf = ( ( value >> start ) << ( containerLength - offset ) ) >> ( containerLength - offset );
+    return bf;
+}
+//shows current buffer size
+long long bit_stream::get_buffer_size(void){
+    return _bufferSize;
+}
+//returns status of the stream
+bool bit_stream::good(void){
+    return _streamIsGood;
+}
+//reads single code
+unsigned long bit_stream::read_single(void)
+{
+    if( _streamIsGood ) {
+        int codePosIntra = 0;
+        unsigned long bfLF = 0, code = 0;;
+        while( _streamIsGood && codePosIntra < _codeSize ){
+            bfLF = _buffer[ _bufferPos ];
+            int bitsToReadFromCurrentByte = min( 
+                                      _codeSize - codePosIntra, 
+                                      _blockSize - _bufferPosIntra
+                                      );
+            bfLF = pick_bits( 
+                    bfLF, 
+                    _bufferPosIntra, 
+                    bitsToReadFromCurrentByte 
+                    );
+            code += ( bfLF ) << codePosIntra;
+            codePosIntra += bitsToReadFromCurrentByte;
+            _move_pointers( bitsToReadFromCurrentByte );
+        }
+        return code;
+    }
+    return -1;
+}
+//moves internal pointers
+bool bit_stream::_move_pointers( int bitsRead )
+{
+    _bufferPosIntra += bitsRead;
+    if ( _bufferPosIntra >= _blockSize ) {
+        if ( ++_bufferPos >= _bufferSize )
+            return _streamIsGood = false;
+        _bufferPosIntra = 0;
+    }
+    return true;
+}
+
 VQ::VQ(void)
 {
 }
@@ -31,6 +144,38 @@ VQ::VQ(void)
 
 VQ::~VQ(void)
 {
+}
+//reads binary file into a vector of vectors of size dimensionality
+bool VQIO::read_binary( 
+    const string file, 
+    vector<vector<float>>& X, 
+    const int dimensionality
+    )
+{
+    X.clear();
+    ifstream ifsT( file, ios_base::binary );
+    if( ifsT.good() ){
+        ifsT.seekg( 0, ios::end );
+        long long fileSize = ifsT.tellg(), setSize = fileSize / dimensionality / 4;
+        if( fileSize > 0 && ( fileSize % dimensionality == 0 ) ){
+            ifsT.seekg( 0, ios::beg );
+            float* bf = new float[ dimensionality * setSize  ];
+            ifsT.read( reinterpret_cast<char*>(bf), fileSize );
+            ifsT.close();
+            X.resize( setSize );
+            vector<vector<float>>::iterator itX( X.begin() );
+            for( int i = 0; i < setSize; i++ ){
+                *itX++ = vector<float>( 
+                                bf + i * dimensionality, 
+                                bf + (i + 1) * dimensionality 
+                                );
+            }
+
+            return true;
+        }
+
+    }
+    return false;
 }
 //generates code book of size 2^n into C
 bool coach::train( 
@@ -63,7 +208,6 @@ bool coach::train(
     }
     return true;
 }
-
 //finds mean vectors over  X elements belonging to one code
 //and stores them in C
 void coach::find_mean( 

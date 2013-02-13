@@ -52,6 +52,29 @@ int load_test_data(
     return 0;
 }
 
+void load_test_io(
+    string file,
+    list<float>& l
+    )
+{
+    ifstream input( file );
+    if ( input.good() ){
+        copy( 
+            istream_iterator <float>( input ), 
+            istream_iterator <float>(), 
+            back_inserter( l ) 
+            );
+    }
+}
+
+unsigned long read_bits( const unsigned long value, const int start, const int offset )
+{
+    unsigned long bf = 0;
+    int containerLength = 8 * sizeof( bf );
+    bf = ( ( value >> start ) << ( containerLength - offset ) ) >> ( containerLength - offset );
+    return bf;
+}
+
 int main(int argc, char* argv[])
 {
     coach c;
@@ -168,6 +191,183 @@ int main(int argc, char* argv[])
         
 //    debugP( c.train() );
 //    m1 = c.load();
+    /*list<float> l;
+    load_test_io( "../tests/test-ascii-s.dat", l );
+    
+    cout << l.size() << "  " << *l.begin() << endl;
+
+    ifstream ifsT( "../tests/test.dat", ios_base::binary );
+    if ( ifsT.good() ){
+        float* f;
+        f = new float[5];
+        //vector<vector<float>> f( 2, vector<float>( 2, 0.0 ) );
+//        unsigned char* bf = (unsigned char*)&f;
+//        unsigned char* bf = reinterpret_cast<unsigned char*>(f);
+//        char* bf;
+ //       bf = new char[20];
+//        bf = new unsigned char[16];
+//        ifsT.read( (char*)bf, sizeof( f ) );
+        ifsT.read( reinterpret_cast<char*>(f), 20 );
+//        vector<float*> fv( f, f+2 );
+//        ifsT.read( bf, 20 );
+//        memcpy( f, bf, 20 );
+        f++;
+        f++;
+        f++;
+        f++;
+//        vector<float> v(5);
+//        memcpy( &v, f, 20 );
+
+        cout << f[0] << "  " << f[1] << "  " << f[4] << endl;
+        debugP( sizeof( f ), sizeof( f ) );
+//        memcpy( &f, bf, sizeof( f ) );
+//        f = static_cast<float>(*bf);
+        cout  << endl;
+    }
+
+            VQIO io;
+            bool result = false;
+            int n = 13;
+            vector<vector<float>> V;
+            io.read_binary( "../tests/test.dat", V, n );
+            cout << V.size() << endl;
+                 for( int i = 0; i < 2 * n; i++ ){
+                     cout << i << " " << V[ (int) i / n ][ i % n ] << endl;
+                     cout << V.size() - i/n << " " << V[ (int)( V.size() - 2 + i/n ) ][ i % n ] << endl;
+                }*/
+
+   /*boost::dynamic_bitset<unsigned long> bitSet;
+    std::cout << bitSet << endl;
+    for( unsigned long i = 1; i < 15; i++ ){
+        bitSet.resize( bitSet.size() + 4, 0 ); 
+        std::cout << bitSet << " size " << bitSet.size() << endl;
+        
+    }
+    //std::cout << bitSet << endl;
+    std::cout<< log(  ULONG_MAX ) << endl;
+    std::cout<<  ULLONG_MAX << endl;
+    std::cout<<  ULONG_MAX << endl;
+    std::cout<<  ( pow( 2, 32 ) - 1 ) << endl;*/
+   
+    //bitstream
+    unsigned long bfSize = 3;
+    int codeWordLength = 6, codeWordsNumber = 13;
+    unsigned long *bfL, *codes, bf, bf1, *codes2;
+    codes = new unsigned long[ codeWordsNumber ];
+    bfL = new unsigned long[ bfSize ];
+    unsigned char *bfC = reinterpret_cast<unsigned char*>( bfL );
+    /*
+    *bfL = ~0ul;
+    *bfL = 0ul;
+    for( int i = 0; i < 4; i++ ){
+        cout<< i << " " << bfC[i] << endl;
+    }
+   */
+    int bfLPos = 0, bfLPosIntra = 0, bfLLengthIntra = 32;
+    for( int i = 0; i < codeWordsNumber; i++ )
+        codes[i] = i;
+    int newPos = 0, ci = 0;
+    bfL[ci] = 0;
+    for( int i = 0; i < codeWordsNumber; i++ ){
+        newPos = bfLPosIntra + codeWordLength;
+        bf = codes[i];
+        cout << bf << " moved is " <<  (bf << bfLPosIntra ) << endl;
+        bfL[ci] += ( bf << bfLPosIntra );
+        if( newPos < bfLLengthIntra ){
+            // *bfL += (bf << bfLPosIntra );
+            bfLPosIntra += codeWordLength;
+//            boost::dynamic_bitset<unsigned long> bitSet( 32 ,*bfL );
+//            cout << bitSet << endl;
+        }else{
+//            boost::dynamic_bitset<unsigned long> bitSet( 32 ,*bfL );
+//            cout << bitSet << endl;            
+            bf = ( codes[i] >> ( bfLLengthIntra - bfLPosIntra )  );
+            ci++;
+            bfL[ci] = 0;
+            bfL[ci] += bf;
+            bfLPosIntra = codeWordLength - ( bfLLengthIntra - bfLPosIntra );
+//            boost::dynamic_bitset<unsigned long> bitSet1( 32 ,*bfL );
+//            cout << bitSet1 << endl;        
+        }
+
+    }
+
+    for( int i = 0; i < bfSize; i++ ){
+       boost::dynamic_bitset<unsigned long> bitSet1( 32 , bfL[i] );
+       cout << bitSet1 << endl; 
+    }
+
+    long long fileSize = 4 * bfSize, codesInFile = fileSize * 8 / codeWordLength, filePos = 0;
+
+    /*ofstream ofs( "../tests/bits.dat", ios_base::binary );
+    ofs.write( reinterpret_cast<char *>( bfC ), fileSize );
+    ofs.close();*/
+
+    unsigned char* bfCr;
+    bfCr = new unsigned char[ fileSize ];
+    ifstream ifs( "../tests/bits.dat", ios_base::binary );
+    ifs.read( reinterpret_cast<char *>( bfCr ), fileSize );
+    ifs.close();
+
+    unsigned char bfC1 = 0;
+    unsigned long bfLF = 0;
+    int filePosIntra = 0, codesPosIntra = 0, newFilePos, newCodePos, blockSize = 8; 
+    codes2 = new unsigned long[ codesInFile ];
+/* read_bits
+    bfLF = pow( 2, 5 ) - 1;
+    bfLF = bfLF << 8;
+    boost::dynamic_bitset<unsigned long> bitSet( 32 , bfLF );
+    cout << bitSet << endl; 
+
+    bfLF = read_bits( bfLF, 10, 4 );
+    boost::dynamic_bitset<unsigned long> bitSet1( 32 , bfLF );
+    cout << bfLF << " bin " << bitSet1 << endl; 
+*/
+    for( long long i = 0; i < codesInFile; i++ ){
+        codes2[i] = 0;
+        codesPosIntra = 0;
+        while( codesPosIntra < codeWordLength ){
+            bfLF = bfCr[ filePos ];
+            int bitsToReadFromCurrentByte = min( 
+                                        codeWordLength - codesPosIntra, 
+                                        blockSize - filePosIntra
+                                        );
+            bfLF = read_bits( bfLF, filePosIntra, bitsToReadFromCurrentByte );
+            codes2[i] += ( bfLF ) << codesPosIntra;
+            codesPosIntra += bitsToReadFromCurrentByte;
+            filePosIntra += bitsToReadFromCurrentByte;
+            if ( filePosIntra >= blockSize ) {
+                filePos++;
+                filePosIntra = 0;
+            }
+        }
+    }
+    
+    for( int i = 0; i < codesInFile; i++ ){
+       boost::dynamic_bitset<unsigned long> bitSet1( 32 , codes2[i] );
+       cout << codes2[i] << " bin " << bitSet1 << endl; 
+    }
+
+    delete[] codes;
+    delete[] codes2;
+    delete[] bfL;
+    delete[] bfCr;
+
+//    std::cout<< bfL << endl;
+    int codeSize = 6;//,  codeWordsNumber = 13;            
+    //in this file we've encoded numbers from 0 to 12 with 6 bit code
+    bit_stream bs( "../tests/bits.dat", codeSize );
+    cout << "bf size " << bs.get_buffer_size() << endl;
+    while( bs.good() ){
+        cout << bs.read_single() << endl;
+    }
+    int i = 0, i1 = i;
+    /*for( int i = 0; i < codeWordsNumber; i++ )
+        Assert::AreEqual<int>( i, bs.read_single() );
+    for( int i = codeWordsNumber; i < 16; i++ )
+        Assert::AreEqual<int>( 0, bs.read_single() );
+    Assert::AreEqual<int>( -1, bs.read_single() );*/
+
     if ( argc > 1 ) {
 
     }

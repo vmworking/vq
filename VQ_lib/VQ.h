@@ -4,10 +4,12 @@
 #include <fstream>
 #include <algorithm>
 #include <vector>
+#include <list>
 #include <numeric>
 #include <cmath>
 #include <boost/numeric/ublas/matrix.hpp>
 #include <boost/numeric/ublas/io.hpp>
+#include <boost/dynamic_bitset.hpp>
 
 using namespace std;
 
@@ -20,11 +22,68 @@ public:
     static void vector_by_scalar_inplace( vector<float>& v, float s );
 };
 
+//bitstreaming, saving and loading bitstreams into/from a file
+class VQ_API bit_stream
+{
+    int _blockSize;
+    int _codeSize;
+    bool _deleteBufferWhenFinish;
+    bool _streamIsGood;
+    string _inputFile;
+
+    long long _bufferPos;
+    int _bufferPosIntra;
+    long long _bufferSize;
+    unsigned char* _buffer;
+
+    void _init_defaults(void);
+    //moves internal pointers
+    bool bit_stream::_move_pointers( int bitsRead );
+
+public:
+    bit_stream(void);
+    bit_stream( const string inputFile, const int codeSize );
+    bit_stream( 
+        unsigned char* buffer, 
+        const long long bufferSize, 
+        const int codeSize 
+        );
+    ~bit_stream(void);
+    //reads certain bits in value
+    static unsigned long pick_bits( 
+        const unsigned long value, 
+        const int start, 
+        const int offset 
+        );
+    //show current buffer size
+    long long get_buffer_size(void);
+    //returns status of the stream
+    bool good(void);
+    //parces whole buffer and puts it into out
+    void read_all( vector<unsigned long> &out );
+    //reads single code
+    unsigned long read_single(void);
+    //writes whole buffer into outputFile
+    bool write_all( const string outputFile );
+
+};
+
 class VQ_API VQ
 {
 public:
     VQ(void);
     ~VQ(void);
+};
+
+class VQ_API VQIO
+{
+public:
+    //reads binary file into vector of vectors of size dimensionality
+    bool read_binary( 
+        const string file, 
+        vector<vector<float>>& X, 
+        const int dimensionality
+        );
 };
 
 class VQ_API coach
