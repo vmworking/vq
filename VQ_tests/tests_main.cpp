@@ -91,6 +91,26 @@ namespace VQ_tests
                    );                        
 		}
 
+		TEST_METHOD(RealCodeBookContent_train_coach)
+		{
+			if ( _X.size() == 0 )
+                _cbpower = load_test_data( "../tests/test_matlab_5_f.dat", _X, _C, _idx );
+            _c.train( _X, _COutput, _idx, _cbpower, 0.01f, 0.01f );
+
+            Assert::AreEqual<int>( 
+                _C.size(), 
+                _COutput.size() 
+                ); 	
+
+            for( int i = 0; i < _C.size(); i++ )
+                for( int j = 0; j < _C[0].size(); j++ )
+                    Assert::AreEqual( 
+                        _C[i][j], 
+                        _COutput[i][j],
+                        Toll
+                   );                        
+		}
+
 		TEST_METHOD(CodeBookSize_train_coach)
 		{
 			if ( _X.size() == 0 ) 
@@ -140,7 +160,7 @@ namespace VQ_tests
             //lets create test data
             int dimension = 3, setSize = 12, centroidsNumber = 4;
             int chunkSize = setSize / centroidsNumber;
-            vector<long long> idx( setSize, 0 ), idxOut( setSize, 0 );
+            vector<long long> idx( setSize, 0 ), idxOut( setSize, 1 );
             vector<float> v0( dimension, 0 );
             vector<vector<float>>   X( setSize ), 
                                     C( centroidsNumber );
@@ -318,6 +338,42 @@ namespace VQ_tests
             }else{
                 Assert::AreEqual<bool>( false, result );                   
             }
+		}  
+
+        TEST_METHOD(Write_binary_VQIO)
+		{
+            VQIO io;
+            bool result = false;
+            int numberOfPoints = 12, dimensionality = 3, 
+                numberOfFloats = numberOfPoints * dimensionality,
+                trueFileSize = numberOfFloats * 4;
+            vector<vector<float>> X;
+            X.resize( numberOfPoints, vector<float>( dimensionality, 0 ) );
+            for( int i = 0; i < numberOfPoints; i++ ){
+                vector<float> vv( dimensionality, i );
+                X[i] = vv;
+            }
+            io.write_binary( "../tests/write_binary_VQIO.dat", X );
+            
+            ifstream is( "../tests/write_binary_VQIO.dat", ios_base::binary );
+            
+            Assert::AreEqual<bool>( true, is.good() );
+            is.seekg( 0, ios::end );
+            unsigned long long fileSize = is.tellg();
+            is.seekg( 0, ios::beg );
+
+            Assert::AreEqual<int>( trueFileSize, fileSize );
+            float bf[ 36 ];
+            is.read( reinterpret_cast<char *>(bf), fileSize );
+
+            for( int i = 0; i < numberOfPoints; i++ )
+                for( int j = 0; j < dimensionality; j++ )
+                    Assert::AreEqual(
+                        X[i][j],
+                        bf[ i*dimensionality + j ],
+                        Toll
+                        );
+            
 		}  
 
         TEST_METHOD(FileInput_bit_stream)

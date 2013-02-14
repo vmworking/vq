@@ -1,0 +1,1 @@
+-a c -d 13 -n 11 -s ../tests/test.dat -c ../tests/codes.dat -e ../tests/test.enc -o ../tests/test.dec

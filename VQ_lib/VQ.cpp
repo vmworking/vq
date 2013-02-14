@@ -1,7 +1,9 @@
 #include "stdafx.h"
 #include "VQ.h"
 using namespace std;
-
+//////
+//VQm
+//////
 float VQm::coord_squared( const float& v1, const float& v2 )
 {
     return (v1 - v2) * (v1 - v2);
@@ -25,9 +27,9 @@ void VQm::vector_by_scalar_inplace( vector<float>& v, const float s )
 }
 
 
-
-
-
+//////
+//bit_stream
+//////
 bit_stream::bit_stream(void)
 {
     _init_defaults();
@@ -249,18 +251,85 @@ bool bit_stream::write_single( const unsigned long val )
     return false;       
 }
 
-
-
-
-
+//////
+//VQ
+//////
+//base class for vector quantization
 VQ::VQ(void)
 {
+    _isGood = false;
 }
-
-
 VQ::~VQ(void)
 {
 }
+bool VQ::configure( VQconf c )
+{
+    if( 
+        ( c.codeSizePower > 0 ) 
+        && ( c.codeSizePower < 32 )
+        && ( c.dimensionality > 0 )
+        && ( c.dimensionality < 100 )
+        ){
+        _conf = c;
+        return _isGood = true;
+    }
+    return false;
+}
+bool VQ::good(void)
+{
+    return _isGood;
+}
+bool VQ::train(void)
+{
+    if( good() ){
+        return _c.train( 
+                    _source, 
+                    _codeBook, 
+                    _encoded,
+                    _conf.codeSizePower,
+                    _conf.step, 
+                    _conf.distortion 
+                    );
+    }
+    return false;
+}
+bool VQ::encode(void)
+{
+    return false;
+}
+bool VQ::decode(void)
+{
+    return false;
+}
+bool VQ::load_source( const string file )
+{
+    return _io.read_binary( file, _source, _conf.dimensionality );
+}
+bool VQ::load_code_book( const string file )
+{
+    return false;
+}
+bool VQ::load_encoded( const string file )
+{
+    return false;
+}
+bool VQ::save_decoded( const string file )
+{
+    return false;
+}
+bool VQ::save_code_book( const string file )
+{
+    return _io.write_binary( file, _codeBook );
+}
+bool VQ::save_encoded( const string file )
+{
+    return false;
+}
+
+
+//////
+//VQIO
+//////
 //reads binary file into a vector of vectors of size dimensionality
 bool VQIO::read_binary( 
     const string file, 
@@ -293,6 +362,29 @@ bool VQIO::read_binary(
     }
     return false;
 }
+//writes every X element into file
+bool VQIO::write_binary( const string file, const vector<vector<float>>& X )
+{
+    if( X.size() > 0 ){
+        ofstream ofs( file, ios_base::binary );
+        if( ofs.good() ){
+            vector<vector<float>>::const_iterator itX( X.begin() );
+            int dimensionality = (*itX).size();
+            while( itX != X.end() ){
+                vector<float> v( *itX++ );
+                ofs.write( reinterpret_cast<char *>(&v[0]), dimensionality * 4 );
+            }
+            ofs.close();
+            return true;
+        }
+    }
+    return false;
+}
+
+
+//////
+//coach
+//////
 //generates code book of size 2^n into C
 bool coach::train( 
         const vector<vector<float>>& X,
@@ -314,12 +406,23 @@ bool coach::train(
         split_and_move_centroids( C, n, stepSize );
         float costPrev = -1.0, cost = costPrev;
         bool moveCentroids = true;
+        
+        //dbuging
+        cout << " n is --------" << n << endl;
+        unsigned long moves = 0;
+        //-------
+
         while( moveCentroids ){
             find_nearest_centroid( X, C, idx, n + 1 );
             find_mean( X, C, idx, pow( 2, n + 1 ) );
-            cost = compute_cost( X, C, idx );
+            cost = compute_cost( X, C, idx ) / pow( 2, n + 1 ) / X.size()  ;
             moveCentroids = ( moveCentroids < 0 ) || ( ( costPrev - cost ) / costPrev > distortionToll );
             costPrev = cost;
+            
+            //dbuging
+            cout << " move is --------" << ++moves << endl;
+            //-------
+
         }
     }
     return true;
@@ -367,8 +470,21 @@ float coach::find_nearest_centroid(
     //current position in X
     long long iX = 0;
     float minDist, argMinDist, cost = 0 , bf;
+    
+    //debuging
+    int xco = 0;
+    //-----
+    
     while( itX != X.end() ){
+        
+        //debuging
+        if ( xco == 50 )
+            xco = 100;
+        xco++;
+        //-----
+
         i = argMinDist = 0;
+        idx[ iX ] = i;
         minDist = VQm::L2distance( *itX, C[i] );
         while( i < bookSize ){
             if ( ( bf = VQm::L2distance( C[i], *itX ) ) < minDist ){

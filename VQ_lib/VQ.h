@@ -13,6 +13,9 @@
 
 using namespace std;
 
+//////
+//VQm
+//////
 //some handmade math
 class VQ_API VQm 
 {
@@ -22,6 +25,10 @@ public:
     static void vector_by_scalar_inplace( vector<float>& v, float s );
 };
 
+
+//////
+//bit_stream
+//////
 //bitstreaming, saving and loading bitstreams into/from a file
 class VQ_API bit_stream
 {
@@ -79,13 +86,22 @@ public:
     bool write_single( const unsigned long val );
 };
 
-class VQ_API VQ
-{
-public:
-    VQ(void);
-    ~VQ(void);
+
+//////
+//VQconf
+//////
+struct VQ_API VQconf{
+    unsigned int 
+        dimensionality
+        ,codeSizePower;
+    float
+        step, distortion;
 };
 
+
+//////
+//VQIO
+//////
 class VQ_API VQIO
 {
 public:
@@ -95,8 +111,17 @@ public:
         vector<vector<float>>& X, 
         const int dimensionality
         );
+    //writes every X element into file
+    bool write_binary( 
+        const string file, 
+        const vector<vector<float>>& X 
+        );
 };
 
+
+//////
+//coach
+//////
 class VQ_API coach
 {
     //input vectors
@@ -153,5 +178,35 @@ public:
         const vector<long long>& idx
         );
 
+};
+
+
+//////
+//VQ
+//////
+//base class for vector quantization
+class VQ_API VQ
+{
+    VQconf _conf;
+    bool _isGood;
+    VQIO _io;
+    vector<vector<float>> _source;
+    vector<vector<float>> _codeBook;
+    vector<long long> _encoded;
+    coach _c;
+public:
+    VQ(void);
+    ~VQ(void);
+    bool configure( VQconf configuration );
+    bool good(void);
+    bool train(void);
+    bool encode(void);
+    bool decode(void);
+    bool load_source( const string file );
+    bool load_code_book( const string file );
+    bool load_encoded( const string file );
+    bool save_decoded( const string file );
+    bool save_code_book( const string file );
+    bool save_encoded( const string file );
 };
 
