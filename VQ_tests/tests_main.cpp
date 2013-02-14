@@ -338,6 +338,9 @@ namespace VQ_tests
             bfL = bit_stream::pick_bits( bfL, 10, 4 );
             //boost::dynamic_bitset<unsigned long> bitSet1( 32 , bfL );
             Assert::AreEqual<int>( 7, bfL );
+            bfL = bit_stream::pick_bits( (unsigned long)(pow( 2, 5 ) - 1), 0, 6 );
+            Assert::AreEqual<int>( 31, bfL );
+
         }
 
         TEST_METHOD(Read_single_bit_stream)
@@ -352,6 +355,82 @@ namespace VQ_tests
                 Assert::AreEqual<int>( 0, bs.read_single() );
             Assert::AreEqual<int>( -1, bs.read_single() );
 
+        }
+
+        TEST_METHOD(Count_codes_bit_stream)
+        {
+            bit_stream bs( "../tests/bits.dat", 6 );
+            Assert::AreEqual<int>( 16, bs.count_codes() );
+        }
+
+        TEST_METHOD(Read_all_bit_stream)
+        {
+            int codeSize = 6,  codeWordsNumber = 13;   
+            bit_stream bs( "../tests/bits.dat", codeSize );
+            vector<unsigned long> v;
+            bs.read_all( v );
+            Assert::AreEqual<int>( 16, v.size() );
+            for( int i = 0; i < codeWordsNumber; i++ )
+                Assert::AreEqual<int>( i, v[i] );
+            for( int i = codeWordsNumber; i < 16; i++ )
+                Assert::AreEqual<int>( 0, v[i] );
+        }
+
+        TEST_METHOD(SmallCode_write_single_bit_stream)
+        {
+            int codeSize = 6,  bufferSize = 3;   
+            bit_stream bs( codeSize, bufferSize );
+            unsigned long bfL = pow( 2, 5 ) - 1;
+            bs.write_single( bfL );
+            bs.write_single( bfL - 2 );
+            bs.seek( 0, 0 );
+            Assert::AreEqual<int>( bfL, bs.read_single() );
+            Assert::AreEqual<int>( bfL - 2, bs.read_single() );
+        }
+        
+        TEST_METHOD(LargeCode_write_single_bit_stream)
+        {
+            int codeSize = 10,  bufferSize = 4;   
+            bit_stream bs( codeSize, bufferSize );
+            unsigned long bfL = pow( 2, 5 ) - 1;
+            bs.write_single( bfL );
+            bs.write_single( bfL - 2 );
+            bs.seek( 0, 0 );
+            Assert::AreEqual<int>( bfL, bs.read_single() );
+            Assert::AreEqual<int>( bfL - 2, bs.read_single() );
+        }
+
+        TEST_METHOD(Write_all_bit_stream)
+        {
+            int codeSize = 6,  codeWordsNumber = 13;   
+            bit_stream bs( "../tests/bits.dat", codeSize );
+//            bit_stream bs( codeSize, 3 );
+            vector<unsigned long> v( codeWordsNumber );
+            for( int i = 0; i < codeWordsNumber; i++ )
+                v[i] = i;
+            bs.write_all( v );
+            bs.seek( 0, 0 );
+            for( int i = 0; i < codeWordsNumber; i++ )
+                Assert::AreEqual<int>( i, bs.read_single() );
+        }
+
+        TEST_METHOD(Flush_bit_stream)
+        {
+            int codeSize = 6,  codeWordsNumber = 13;   
+            bit_stream bs( codeSize, 3 );
+            vector<unsigned long> v( codeWordsNumber ), v1;
+            for( int i = 0; i < codeWordsNumber; i++ )
+                v[i] = i;
+            bs.write_all( v );
+            Assert::AreEqual<bool>(
+                true,
+                bs.flush( "../tests/flush_test.dat" )
+                );
+            bit_stream bs1( "../tests/flush_test.dat" , codeSize );
+            bs1.read_all( v1 );
+            Assert::AreEqual<int>( v.size(), v1.size() );
+            for( int i = 0; i < v1.size(); i++ )
+                Assert::AreEqual<int>( v[i], v1[i] );
         }
 
 	};

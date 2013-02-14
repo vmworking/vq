@@ -354,19 +354,51 @@ int main(int argc, char* argv[])
     delete[] bfCr;
 
 //    std::cout<< bfL << endl;
-    int codeSize = 6;//,  codeWordsNumber = 13;            
+    //int codeSize = 6;//,  codeWordsNumber = 13;            
     //in this file we've encoded numbers from 0 to 12 with 6 bit code
-    bit_stream bs( "../tests/bits.dat", codeSize );
+    /*bit_stream bs( "../tests/bits.dat", codeSize );
     cout << "bf size " << bs.get_buffer_size() << endl;
     while( bs.good() ){
         cout << bs.read_single() << endl;
     }
     int i = 0, i1 = i;
-    /*for( int i = 0; i < codeWordsNumber; i++ )
+    for( int i = 0; i < codeWordsNumber; i++ )
         Assert::AreEqual<int>( i, bs.read_single() );
     for( int i = codeWordsNumber; i < 16; i++ )
         Assert::AreEqual<int>( 0, bs.read_single() );
     Assert::AreEqual<int>( -1, bs.read_single() );*/
+     /* //write single
+     
+     //int codeSize = 10,  bufferSize = 4;   
+            bit_stream bs( 6, 4 );
+            unsigned long bfL1 = pow( 2, 5 ) - 1, bf2, bf3 = 0;
+            bs.write_single( bfL1 );
+//            bs.write_single( bfL1 - 2 );
+            bs.seek( 0, 0 );
+            bf2 =  bs.read_single(); 
+//            bf3 =  bs.read_single(); 
+            boost::dynamic_bitset<unsigned long> bs2( 32, bf2 );
+            boost::dynamic_bitset<unsigned long> bs4( 32, 236 );
+            boost::dynamic_bitset<unsigned long> bs3( 32, bf3 );
+            cout<< bfL1 << " vs----vs "  << bs2 << " 31 bin " << bs4 << endl;
+            cout<< ( bfL1 - 2 ) << " vs----vs "  << bs3 << endl;
+*/
+
+    //wtite all
+                int codeSize = 6;   
+//            bit_stream bs( "../tests/bits.dat", codeSize );
+            codeWordsNumber = 2;
+            bit_stream bs( codeSize, 3 );
+            vector<unsigned long> v( codeWordsNumber );
+            for( int i = 0; i < codeWordsNumber; i++ )
+                v[i] = i;
+            bs.write_all( v );
+            bs.seek( 0, 0 );
+            for( int i = 0; i < codeWordsNumber; i++ )
+                cout << i << " vs " << bs.read_single() << endl;
+            double v1 = 2, v2 = 6, v3 = 8;
+            cout << ceil( (double) (v1 * v2 / v3) ) << endl;
+            cout << ceil( (double) (codeWordsNumber * codeSize) / 8 ) << endl;
 
     if ( argc > 1 ) {
 

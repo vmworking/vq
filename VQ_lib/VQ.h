@@ -37,15 +37,19 @@ class VQ_API bit_stream
     unsigned char* _buffer;
 
     void _init_defaults(void);
+    //checks  if there's enough bits left in _buffer to store/read a full code
+    bool _check_buffer_capacity(void);
     //moves internal pointers
-    bool bit_stream::_move_pointers( int bitsRead );
+    bool _move_pointers( int bitsRead );
 
 public:
     bit_stream(void);
+    bit_stream( const int codeSize, const long long bufferSize );
+    //reads the whole file and puts its content into _buffer
     bit_stream( const string inputFile, const int codeSize );
+    //creates a proper formatted _buffer from input
     bit_stream( 
-        unsigned char* buffer, 
-        const long long bufferSize, 
+        const vector<unsigned long> &input, 
         const int codeSize 
         );
     ~bit_stream(void);
@@ -55,17 +59,24 @@ public:
         const int start, 
         const int offset 
         );
+    //returns the amount of full codes in _buffer
+    long long count_codes(void);
+    //flushes the whole buffer into file
+    bool flush( const string file );
     //show current buffer size
     long long get_buffer_size(void);
     //returns status of the stream
     bool good(void);
-    //parces whole buffer and puts it into out
+    //parces the whole buffer and puts it into out
     void read_all( vector<unsigned long> &out );
     //reads single code
     unsigned long read_single(void);
-    //writes whole buffer into outputFile
-    bool write_all( const string outputFile );
-
+    //puts carrets on bofferPos and bufferPosIntra if it's possible
+    void seek( long long bofferPos, int bufferPosIntra );
+    //recreates buffer from  input
+    void write_all( const vector<unsigned long> &input );
+    //writes a single code in  buffer
+    bool write_single( const unsigned long val );
 };
 
 class VQ_API VQ

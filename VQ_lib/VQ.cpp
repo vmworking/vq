@@ -24,11 +24,30 @@ void VQm::vector_by_scalar_inplace( vector<float>& v, const float s )
         *it++ = *it * s;
 }
 
+
+
+
+
 bit_stream::bit_stream(void)
 {
     _init_defaults();
 }
+bit_stream::bit_stream( const int codeSize, const long long bufferSize)
+{
+    _init_defaults();
+    if( bufferSize > 0 ){
+        _codeSize = codeSize;
+        _bufferSize = bufferSize;
+        _deleteBufferWhenFinish = true;
+        _buffer = new unsigned char[ _bufferSize ];
+        for( long long i = 0; i < _bufferSize; i++ )
+            _buffer[i] = 0;
+        _streamIsGood = true;
+    }
 
+}
+
+//reads the whole file and puts its content into _buffer
 bit_stream::bit_stream( const string inputFile, const int codeSize )
 {
     _init_defaults();
@@ -49,25 +68,31 @@ bit_stream::bit_stream( const string inputFile, const int codeSize )
         }
     }
 }
-
+//creates a proper formatted _buffer from inputV
 bit_stream::bit_stream( 
-    unsigned char *buffer, 
-    const long long bufferSize, 
-    const int codeSize 
+        const vector<unsigned long> &input, 
+        const int codeSize 
     )
 {
     _init_defaults();
-    _buffer = buffer;
-    _bufferSize = bufferSize;
     _codeSize = codeSize;
-    _streamIsGood = true;
+    write_all( input );
 }
 
 bit_stream::~bit_stream(void)
 {
     if( _deleteBufferWhenFinish ) delete[] _buffer;
 }
-
+//check  if there's enough bits left in buffer to store/read a full code
+bool bit_stream::_check_buffer_capacity(void)
+{
+    if ( 
+        ( _blockSize - _bufferPosIntra ) //how many bits is left in the current block
+        + ( _bufferSize - (_bufferPos + 1) ) * _blockSize < _codeSize 
+        )
+        return _streamIsGood = false;
+    return true;
+}
 void bit_stream::_init_defaults(void)
 {
     _deleteBufferWhenFinish = false;
@@ -79,6 +104,16 @@ void bit_stream::_init_defaults(void)
     _bufferPosIntra = 0;
     _buffer = NULL;
     _blockSize = 8;
+}
+//moves internal pointers
+bool bit_stream::_move_pointers( int bitsRead )
+{
+    _bufferPosIntra += bitsRead;
+    if ( ( _bufferPosIntra >= _blockSize ) ) {
+        _bufferPos++;
+        _bufferPosIntra = 0;
+    }
+    return true;
 }
 //reads certain bits in value
 unsigned long bit_stream::pick_bits( 
@@ -92,6 +127,25 @@ unsigned long bit_stream::pick_bits(
     bf = ( ( value >> start ) << ( containerLength - offset ) ) >> ( containerLength - offset );
     return bf;
 }
+//returns the amount of full codes in _buffer
+long long bit_stream::count_codes(void)
+{
+    return (long long) _bufferSize * _blockSize / _codeSize;
+}
+//flushes the whole buffer into file
+bool bit_stream::flush( const string file )
+{
+    if( _bufferSize > 0 && _buffer != NULL ){
+        ofstream ofs( file, ios_base::binary );
+        if( ofs.good() ){
+            ofs.write( reinterpret_cast<char *>( _buffer ), _bufferSize );
+            ofs.close();
+            return true;
+        }
+        return false;
+    }
+    return false;
+}
 //shows current buffer size
 long long bit_stream::get_buffer_size(void){
     return _bufferSize;
@@ -100,12 +154,24 @@ long long bit_stream::get_buffer_size(void){
 bool bit_stream::good(void){
     return _streamIsGood;
 }
+//parces the whole buffer and puts it into out
+void bit_stream::read_all( vector<unsigned long> &out )
+{
+    if( _streamIsGood ){
+        out.clear();
+        out.resize( count_codes() );
+        seek( 0, 0 );
+        vector<unsigned long>::iterator it( out.begin() );
+        while( _streamIsGood )
+            *it++ = read_single();
+    }
+}
 //reads single code
 unsigned long bit_stream::read_single(void)
 {
-    if( _streamIsGood ) {
+    if( _streamIsGood && _check_buffer_capacity() ) {
         int codePosIntra = 0;
-        unsigned long bfLF = 0, code = 0;;
+        unsigned long bfLF = 0, code = 0;
         while( _streamIsGood && codePosIntra < _codeSize ){
             bfLF = _buffer[ _bufferPos ];
             int bitsToReadFromCurrentByte = min( 
@@ -121,21 +187,71 @@ unsigned long bit_stream::read_single(void)
             codePosIntra += bitsToReadFromCurrentByte;
             _move_pointers( bitsToReadFromCurrentByte );
         }
+        _check_buffer_capacity();
         return code;
     }
     return -1;
 }
-//moves internal pointers
-bool bit_stream::_move_pointers( int bitsRead )
+//puts carrets on bofferPos and bufferPosIntra if it's possible
+void bit_stream::seek( long long bofferPos, int bufferPosIntra )
 {
-    _bufferPosIntra += bitsRead;
-    if ( _bufferPosIntra >= _blockSize ) {
-        if ( ++_bufferPos >= _bufferSize )
-            return _streamIsGood = false;
-        _bufferPosIntra = 0;
+    if (
+        bofferPos < _bufferSize 
+        && bofferPos >= 0
+        && bufferPosIntra < _blockSize
+        && bufferPosIntra >= 0
+        ){
+        _bufferPos = bofferPos;
+        _bufferPosIntra = bufferPosIntra;
+        _streamIsGood = true;
+        _check_buffer_capacity();
     }
-    return true;
 }
+//recreates buffer from  input
+void bit_stream::write_all( const vector<unsigned long> &input )
+{
+    if( input.size() > 0 && _codeSize > 0 ){
+        if( _buffer != NULL && _deleteBufferWhenFinish ) delete[] _buffer;
+        _bufferSize = ceil( (double)( input.size() * _codeSize ) / _blockSize );
+        _buffer = new unsigned char[ _bufferSize ];
+        for( long long i = 0; i < _bufferSize; i++ )
+            _buffer[i] = 0;
+        _deleteBufferWhenFinish = true;
+        seek( 0, 0 );
+        vector<unsigned long>::const_iterator it( input.begin() );
+        while( it != input.end() )
+            write_single( *it++ );
+    }
+}
+//writes a single code in  buffer
+bool bit_stream::write_single( const unsigned long val )
+{
+    if( _streamIsGood && _check_buffer_capacity() ) {
+        int codePosIntra = 0;
+        unsigned char bfLF = 0;
+        while( codePosIntra < _codeSize ){
+            int bitsToWriteToCurrentByte = min( 
+                                      _codeSize - codePosIntra, 
+                                      _blockSize - _bufferPosIntra
+                                      );
+            bfLF = pick_bits( 
+                    val, 
+                    codePosIntra, 
+                    bitsToWriteToCurrentByte 
+                    );
+            _buffer[ _bufferPos ] += ( bfLF ) << _bufferPosIntra;
+            codePosIntra += bitsToWriteToCurrentByte;
+            _move_pointers( bitsToWriteToCurrentByte );
+        }
+        _check_buffer_capacity();
+        return true;
+    }
+    return false;       
+}
+
+
+
+
 
 VQ::VQ(void)
 {
