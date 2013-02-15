@@ -94,7 +94,7 @@ namespace VQ_tests
 		TEST_METHOD(RealCodeBookContent_train_coach)
 		{
 			if ( _X.size() == 0 )
-                _cbpower = load_test_data( "../tests/test_matlab_5_f.dat", _X, _C, _idx );
+                _cbpower = load_test_data( "../tests/test_matlab_7_f.dat", _X, _C, _idx );
             _c.train( _X, _COutput, _idx, _cbpower, 0.01f, 0.01f );
 
             Assert::AreEqual<int>( 

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <LocalDebuggerCommandArguments>-a c -d 13 -n 5 -s ../tests/test.dat -c ../tests/codes.dat -e ../tests/test.enc -o ../tests/test.dec</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-a c -d 13 -n 7 -s ../tests/test.dat -c ../tests/codes.dat -e ../tests/test.enc -o ../tests/test.dec</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>

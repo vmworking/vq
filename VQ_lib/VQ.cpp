@@ -251,81 +251,6 @@ bool bit_stream::write_single( const unsigned long val )
     return false;       
 }
 
-//////
-//VQ
-//////
-//base class for vector quantization
-VQ::VQ(void)
-{
-    _isGood = false;
-}
-VQ::~VQ(void)
-{
-}
-bool VQ::configure( VQconf c )
-{
-    if( 
-        ( c.codeSizePower > 0 ) 
-        && ( c.codeSizePower < 32 )
-        && ( c.dimensionality > 0 )
-        && ( c.dimensionality < 100 )
-        ){
-        _conf = c;
-        return _isGood = true;
-    }
-    return false;
-}
-bool VQ::good(void)
-{
-    return _isGood;
-}
-bool VQ::train(void)
-{
-    if( good() ){
-        return _c.train( 
-                    _source, 
-                    _codeBook, 
-                    _encoded,
-                    _conf.codeSizePower,
-                    _conf.step, 
-                    _conf.distortion 
-                    );
-    }
-    return false;
-}
-bool VQ::encode(void)
-{
-    return false;
-}
-bool VQ::decode(void)
-{
-    return false;
-}
-bool VQ::load_source( const string file )
-{
-    return _io.read_binary( file, _source, _conf.dimensionality );
-}
-bool VQ::load_code_book( const string file )
-{
-    return false;
-}
-bool VQ::load_encoded( const string file )
-{
-    return false;
-}
-bool VQ::save_decoded( const string file )
-{
-    return false;
-}
-bool VQ::save_code_book( const string file )
-{
-    return _io.write_binary( file, _codeBook );
-}
-bool VQ::save_encoded( const string file )
-{
-    return false;
-}
-
 
 //////
 //VQIO
@@ -441,19 +366,22 @@ void coach::find_mean(
     int dimensionality = (*itX).size();
     vector<float> bfV( dimensionality, 0.0 );
     vector<long long> quantity( CBSize, 0 );
-    fill_n( C.begin(), CBSize, bfV );
+    vector<vector<float>> means( CBSize, bfV );
     while( itX != X.end() ){
         for( int i=0; i < dimensionality; i++ ){
-            C[ *itIdx ][i] += (*itX).at( i );
+            means[ *itIdx ][i] += (*itX).at( i );
         }        
         quantity[ *itIdx ]++;
         itX++; itIdx++;
     }
-    vector<vector<float>>::iterator itC( C.begin() );
+    vector<vector<float>>::iterator itC( C.begin() ), itMeans( means.begin() );
     itIdx = quantity.begin();
     while( itIdx != quantity.end() ){
-        if( *itIdx != 0 ) VQm::vector_by_scalar_inplace( *itC,(float) 1/ *itIdx );
-        itC++; itIdx++;
+        if( *itIdx != 0 ){
+            *itC = *itMeans;
+            VQm::vector_by_scalar_inplace( *itC,(float) 1/ *itIdx );
+        }
+        itC++; itIdx++; itMeans++;
     }
    
 }
@@ -470,19 +398,7 @@ float coach::find_nearest_centroid(
     //current position in X
     long long iX = 0;
     float minDist, argMinDist, cost = 0 , bf;
-    
-    //debuging
-    int xco = 0;
-    //-----
-    
     while( itX != X.end() ){
-        
-        //debuging
-        if ( xco == 50 )
-            xco = 100;
-        xco++;
-        //-----
-
         i = argMinDist = 0;
         idx[ iX ] = i;
         minDist = VQm::L2distance( *itX, C[i] );
@@ -529,5 +445,93 @@ float coach::compute_cost(
         cost += VQm::L2distance( *itX++, C[ *itIdx++ ] );
     
     return cost;
+}
+
+
+//////
+//VQ
+//////
+//base class for vector quantization
+VQ::VQ(void)
+{
+    _isGood = false;
+}
+VQ::~VQ(void)
+{
+}
+bool VQ::configure( VQconf c )
+{
+    if( 
+        ( c.codeSizePower > 0 ) 
+        && ( c.codeSizePower < 32 )
+        && ( c.dimensionality > 0 )
+        && ( c.dimensionality < 100 )
+        ){
+        _conf = c;
+        return _isGood = true;
+    }
+    return false;
+}
+bool VQ::good(void)
+{
+    return _isGood;
+}
+bool VQ::train(void)
+{
+    if( good() ){
+        return _c.train( 
+                    _source, 
+                    _codeBook, 
+                    _encoded,
+                    _conf.codeSizePower,
+                    _conf.step, 
+                    _conf.distortion 
+                    );
+    }
+    return false;
+}
+bool VQ::encode(void)
+{
+    if( good() ){
+        return ( _c.find_nearest_centroid( 
+                    _source, 
+                    _codeBook, 
+                    _encoded,
+                    _conf.codeSizePower
+                    ) > -1 );
+    }    
+    
+    return false;
+}
+bool VQ::decode(void)
+{
+    return false;
+}
+bool VQ::load_source( const string file )
+{
+    return _io.read_binary( file, _source, _conf.dimensionality );
+}
+bool VQ::load_code_book( const string file )
+{
+    return false;
+}
+bool VQ::load_encoded( const string file )
+{
+    return false;
+}
+bool VQ::save_decoded( const string file )
+{
+    return false;
+}
+bool VQ::save_code_book( const string file )
+{
+    return _io.write_binary( file, _codeBook );
+}
+bool VQ::save_encoded( const string file )
+{
+    bit_stream bs( _encoded, _conf.codeSizePower );
+
+    
+    return false;
 }
 

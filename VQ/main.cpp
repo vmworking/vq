@@ -22,69 +22,9 @@ void upset( string message )
 }
 
 
-int load_test_data( 
-    string file,
-    vector<vector<float>>& X, 
-    vector<vector<float>>& C,
-    vector<long long>& idx
-    )
-{
-    vector<float> vs;
-    vector<float>::iterator vit;
-    ifstream input( file );    
-    if ( input.good() ){
-        istream_iterator <float> iter( input ), eos; 
-        copy( iter, eos, back_inserter( vs ) );
-        input.close();
-        vit = vs.begin(); 
-        vit += 2;
-        int i = 0;
-        int samplesNumber = vs[ 0 ], featuresNumber = vs[ 1 ];
-        X.resize( samplesNumber );
-        for ( i=0; i < samplesNumber; i++ ){
-            copy_n( vit, featuresNumber, back_inserter( X[ i ] ) );
-            vit += featuresNumber;
-        }
-        int codeBookPower = *vit++;
-        int codeBookSize = pow( 2.0, codeBookPower );
-        C.resize( codeBookSize );
-        for ( i=0; i < codeBookSize; i++ ){
-            copy_n( vit, featuresNumber, back_inserter( C[ i ] ) );
-            vit += featuresNumber;
-        }
-        copy_n( vit, samplesNumber, back_inserter( idx ) );
-        
-        return codeBookPower;
-    }
-    
-    return 0;
-}
-
-
-
 int main(int argc, char* argv[])
 {
-        vector<vector<float>> _X, _C, _COutput;
-        vector<long long> _idx, _idxOutput;
-        coach _c;
-        int _cbpower;
-
-			if ( _X.size() == 0 )
-                _cbpower = load_test_data( "../tests/test_matlab_5_f.dat", _X, _C, _idx );
-            _c.train( _X, _COutput, _idx, _cbpower, 0.01, 0.01 );
-
-            cout << "size C---  " << _C.size() << _COutput.size() << endl; 	
-            system( "pause " );
-            for( int i = 0; i < _C.size(); i++ )
-                for( int j = 0; j < _C[0].size(); j++ )
-                    if( abs( _C[i][j] - _COutput[i][j] ) > 0.001 )
-                        cout << "size C---  " << i << " " << j << " " << _C[i][j] << " vs " << _COutput[i][j] << endl; 	
-
-            system( "pause " );
-    
-    return 1;
-    
-    
+  
     int c;
     VQ model;
     string 
@@ -159,16 +99,37 @@ int main(int argc, char* argv[])
     conf.codeSizePower = codeSizePower;
     conf.step = conf.distortion = 0.01;
     model.configure( conf );
-    if( !model.good() ) 
+    if( ! model.good() ) 
         upset( "Wrong configuration parameters" );
     
+    //load raw data
+    if( 
+        action == "c"
+        || action == "e"
+        || action == "ce"
+        ){
+        if( ! model.load_source( fileSource ) )
+            upset( "Cannot load source data" );
+    }
+    //load codebook
+    if( 
+        action == "e"
+        || action == "o"
+        ){
+        if( ! model.load_code_book( fileCodebook ) )
+            upset( "Cannot load code book" );
+    }
     //create codebook
     if( action == "c" ){
-        if( !model.load_source( fileSource ) )
-            upset( "Cannot load source data" );
         model.train();
-        if( !model.save_code_book( fileCodebook ) )
+        if( ! model.save_code_book( fileCodebook ) )
             upset( "Cannot save codebook" );
+    }
+    //encode raw data
+    if( action == "e" ){
+        model.train();
+        if( !( model.encode() && model.save_encoded( fileEncoded ) ) )
+            upset( "Cannot encode or save the result" );
     }
 
     system( "pause " );
