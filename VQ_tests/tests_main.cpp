@@ -414,8 +414,7 @@ namespace VQ_tests
             unsigned long bfL = pow( 2, 5 ) - 1;
             bfL = bfL << 8;
             bfL = bit_stream::pick_bits( bfL, 10, 4 );
-            //boost::dynamic_bitset<unsigned long> bitSet1( 32 , bfL );
-            Assert::AreEqual<int>( 7, bfL );
+             Assert::AreEqual<int>( 7, bfL );
             bfL = bit_stream::pick_bits( (unsigned long)(pow( 2, 5 ) - 1), 0, 6 );
             Assert::AreEqual<int>( 31, bfL );
 

@@ -7,9 +7,6 @@
 #include <list>
 #include <numeric>
 #include <cmath>
-#include <boost/numeric/ublas/matrix.hpp>
-#include <boost/numeric/ublas/io.hpp>
-#include <boost/dynamic_bitset.hpp>
 
 using namespace std;
 
