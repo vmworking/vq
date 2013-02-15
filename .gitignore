@@ -8,3 +8,5 @@ base
 *.opensdf
 *.asv
 *.sdf
+*.user
+VQ/VQ.vcxproj.user

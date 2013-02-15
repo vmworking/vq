@@ -7,6 +7,7 @@
 #include <list>
 #include <numeric>
 #include <cmath>
+#include <boost/numeric/ublas/io.hpp>
 
 using namespace std;
 
