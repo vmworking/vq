@@ -1,2 +1,2 @@
-vq
+Vector Quantization
 ==
