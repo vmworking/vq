@@ -24,7 +24,7 @@ void upset( string message )
 
 int main(int argc, char* argv[])
 {
-  
+
     int c;
     VQ model;
     string 
@@ -117,21 +117,33 @@ int main(int argc, char* argv[])
         || action == "o"
         ){
         if( ! model.load_code_book( fileCodebook ) )
-            upset( "Cannot load code book" );
+            upset( "Cannot load codebook" );
     }
     //create codebook
-    if( action == "c" ){
-        model.train();
-        if( ! model.save_code_book( fileCodebook ) )
+    if( 
+        action == "c" 
+        || action == "ce" 
+        ){
+        if( !( model.train() && model.save_code_book( fileCodebook ) ) )
             upset( "Cannot save codebook" );
     }
-    //encode raw data
-    if( action == "e" ){
-        model.train();
+    //encode raw data 
+    if( 
+        action == "e" 
+        || action == "ce" 
+        ){
         if( !( model.encode() && model.save_encoded( fileEncoded ) ) )
             upset( "Cannot encode or save the result" );
     }
-
+    //decode data by a given codebook
+    if( action == "o" ){
+        if( ! ( 
+            model.load_encoded( fileEncoded ) 
+            && model.decode() 
+            && model.save_decoded( fileDecoded ) 
+            ))
+            upset( "Cannot decode or save the result" );
+    }
     system( "pause " );
     return 0; 
 } 

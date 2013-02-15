@@ -11,7 +11,7 @@ int load_test_data(
     string file,
     vector<vector<float>>& X, 
     vector<vector<float>>& C,
-    vector<long long>& idx
+    vector<unsigned long>& idx
     )
 {
     vector<float> vs;
@@ -65,7 +65,7 @@ namespace VQ_tests
 	TEST_CLASS(UnitTest1)
 	{
         vector<vector<float>> _X, _C, _COutput;
-        vector<long long> _idx, _idxOutput;
+        vector<unsigned long> _idx, _idxOutput;
         coach _c;
         int _cbpower;
 
@@ -111,6 +111,28 @@ namespace VQ_tests
                    );                        
 		}
 
+		TEST_METHOD(RealEncoded_vq)
+		{
+			if ( _X.size() == 0 )
+                _cbpower = load_test_data( "../tests/test_matlab_7_f_2.dat", _X, _C, _idx );
+            bit_stream bs( "../tests/test_7_1.enc", 7 );
+            Assert::AreEqual<bool>( true, bs.good() );
+            vector<unsigned long> out;
+            bs.read_all( out );
+            Assert::AreEqual( 
+                _idx.size(), 
+                out.size(),
+                1.1
+                ); 	
+
+            for( int i = 0; i < _idx.size(); i++ )
+                    Assert::AreEqual( 
+                        (_idx[i]-1), 
+                        out[i],
+                        Toll
+                   );                        
+		}
+
 		TEST_METHOD(CodeBookSize_train_coach)
 		{
 			if ( _X.size() == 0 ) 
@@ -126,7 +148,7 @@ namespace VQ_tests
 		{
             int dimension = 3, setSize = 9, centroidsNumber = 3;
             int chunkSize = setSize / centroidsNumber;
-            vector<long long> idx( setSize, 0 );
+            vector<unsigned long> idx( setSize, 0 );
             vector<float> v0( dimension, 0 );
             vector<vector<float>>   X( setSize ), 
                                     C( centroidsNumber ), 
@@ -160,7 +182,7 @@ namespace VQ_tests
             //lets create test data
             int dimension = 3, setSize = 12, centroidsNumber = 4;
             int chunkSize = setSize / centroidsNumber;
-            vector<long long> idx( setSize, 0 ), idxOut( setSize, 1 );
+            vector<unsigned long> idx( setSize, 0 ), idxOut( setSize, 1 );
             vector<float> v0( dimension, 0 );
             vector<vector<float>>   X( setSize ), 
                                     C( centroidsNumber );
@@ -191,7 +213,7 @@ namespace VQ_tests
             //lets create test data
             int dimension = 3, setSize = 12, centroidsNumber = 4;
             int chunkSize = setSize / centroidsNumber;
-            vector<long long> idx( setSize, 0 ), idxOut( setSize, 0 );
+            vector<unsigned long> idx( setSize, 0 ), idxOut( setSize, 0 );
             vector<float> v0( dimension, 0 );
             vector<vector<float>>   X( setSize ), 
                                     C( centroidsNumber );
@@ -253,7 +275,7 @@ namespace VQ_tests
             //lets create test data
             int dimension = 3, setSize = 12, centroidsNumber = 4;
             int chunkSize = setSize / centroidsNumber;
-            vector<long long> idx( setSize, 0 );
+            vector<unsigned long> idx( setSize, 0 );
             vector<float> v0( dimension, 0 );
             vector<vector<float>>   X( setSize ), 
                                     C( centroidsNumber );
@@ -359,7 +381,7 @@ namespace VQ_tests
             
             Assert::AreEqual<bool>( true, is.good() );
             is.seekg( 0, ios::end );
-            unsigned long long fileSize = is.tellg();
+            unsigned long fileSize = is.tellg();
             is.seekg( 0, ios::beg );
 
             Assert::AreEqual<int>( trueFileSize, fileSize );
@@ -417,6 +439,8 @@ namespace VQ_tests
         {
             bit_stream bs( "../tests/bits.dat", 6 );
             Assert::AreEqual<int>( 16, bs.count_codes() );
+            bit_stream bs1( 7, 2275 );
+            Assert::AreEqual<int>( 2600, bs1.count_codes() );
         }
 
         TEST_METHOD(Read_all_bit_stream)

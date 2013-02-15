@@ -34,7 +34,7 @@ bit_stream::bit_stream(void)
 {
     _init_defaults();
 }
-bit_stream::bit_stream( const int codeSize, const long long bufferSize)
+bit_stream::bit_stream( const int codeSize, const unsigned long bufferSize)
 {
     _init_defaults();
     if( bufferSize > 0 ){
@@ -42,7 +42,7 @@ bit_stream::bit_stream( const int codeSize, const long long bufferSize)
         _bufferSize = bufferSize;
         _deleteBufferWhenFinish = true;
         _buffer = new unsigned char[ _bufferSize ];
-        for( long long i = 0; i < _bufferSize; i++ )
+        for( unsigned long i = 0; i < _bufferSize; i++ )
             _buffer[i] = 0;
         _streamIsGood = true;
     }
@@ -58,7 +58,7 @@ bit_stream::bit_stream( const string inputFile, const int codeSize )
         ifstream s( inputFile, ios_base::binary );
         if( s.good() ){
             s.seekg( 0, ios::end );
-            long long fileSize = s.tellg();
+            unsigned long fileSize = s.tellg();
             s.seekg( 0, ios::beg );
             _buffer = new unsigned char[ fileSize  ];
             s.read( reinterpret_cast<char*>(_buffer), fileSize );
@@ -79,6 +79,7 @@ bit_stream::bit_stream(
     _init_defaults();
     _codeSize = codeSize;
     write_all( input );
+    seek( 0, 0 );
 }
 
 bit_stream::~bit_stream(void)
@@ -130,9 +131,9 @@ unsigned long bit_stream::pick_bits(
     return bf;
 }
 //returns the amount of full codes in _buffer
-long long bit_stream::count_codes(void)
+unsigned long bit_stream::count_codes(void)
 {
-    return (long long) _bufferSize * _blockSize / _codeSize;
+    return (unsigned long) _bufferSize * _blockSize / _codeSize;
 }
 //flushes the whole buffer into file
 bool bit_stream::flush( const string file )
@@ -149,7 +150,7 @@ bool bit_stream::flush( const string file )
     return false;
 }
 //shows current buffer size
-long long bit_stream::get_buffer_size(void){
+unsigned long bit_stream::get_buffer_size(void){
     return _bufferSize;
 }
 //returns status of the stream
@@ -195,7 +196,7 @@ unsigned long bit_stream::read_single(void)
     return -1;
 }
 //puts carrets on bofferPos and bufferPosIntra if it's possible
-void bit_stream::seek( long long bofferPos, int bufferPosIntra )
+void bit_stream::seek( unsigned long bofferPos, int bufferPosIntra )
 {
     if (
         bofferPos < _bufferSize 
@@ -216,7 +217,7 @@ void bit_stream::write_all( const vector<unsigned long> &input )
         if( _buffer != NULL && _deleteBufferWhenFinish ) delete[] _buffer;
         _bufferSize = ceil( (double)( input.size() * _codeSize ) / _blockSize );
         _buffer = new unsigned char[ _bufferSize ];
-        for( long long i = 0; i < _bufferSize; i++ )
+        for( unsigned long i = 0; i < _bufferSize; i++ )
             _buffer[i] = 0;
         _deleteBufferWhenFinish = true;
         seek( 0, 0 );
@@ -266,7 +267,7 @@ bool VQIO::read_binary(
     ifstream ifsT( file, ios_base::binary );
     if( ifsT.good() ){
         ifsT.seekg( 0, ios::end );
-        long long fileSize = ifsT.tellg(), setSize = fileSize / dimensionality / 4;
+        unsigned long fileSize = ifsT.tellg(), setSize = fileSize / dimensionality / 4;
         if( fileSize > 0 && ( fileSize % dimensionality == 0 ) ){
             ifsT.seekg( 0, ios::beg );
             float* bf = new float[ dimensionality * setSize  ];
@@ -310,11 +311,133 @@ bool VQIO::write_binary( const string file, const vector<vector<float>>& X )
 //////
 //coach
 //////
+
+//computes cost of a given code for a given data
+float coach::compute_cost( 
+    const vector<vector<float>>& X,
+    const vector<vector<float>>& C,
+    const vector<unsigned long>& idx
+    )
+{
+    vector<vector<float>>::const_iterator itX( X.begin() );
+    vector<unsigned long>::const_iterator itIdx( idx.begin() );
+    float cost = 0.0f;
+    while( itX != X.end() )
+        cost += VQm::L2distance( *itX++, C[ *itIdx++ ] );
+    
+    return cost;
+}
+//decodes idx by C and puts the result into X
+bool coach::decode(
+    vector<vector<float>>& X,
+    const vector<vector<float>>& C,
+    const vector<unsigned long>& idx
+    )
+{
+    X.clear();
+    X.resize( idx.size() );
+    vector<unsigned long>::const_iterator itIdx( idx.begin() );
+    vector<vector<float>>::iterator itX( X.begin() );
+    long long bf = 0;
+    while( itIdx != idx.end() ){
+        bf = *itIdx++;
+        if( 
+            ( bf >= 0 )
+            && ( bf < C.size() ) 
+            ){
+            *itX++ = C[ bf ];
+        }else{
+            if(  itIdx == idx.end() ) {
+                X.pop_back();
+            }else return false;
+        }
+    }
+    return true;
+}
+//finds mean vectors over  X elements belonging to one code
+//and stores them in C
+void coach::find_mean( 
+    const vector<vector<float>>& X, 
+    vector<vector<float>>& C, 
+    const vector<unsigned long>& idx,
+    const unsigned long CBSize
+    )
+{
+    vector<vector<float>>::const_iterator itX( X.begin() );
+    vector<unsigned long>::const_iterator itIdx( idx.begin() );
+    int dimensionality = (*itX).size();
+    vector<float> bfV( dimensionality, 0.0 );
+    vector<unsigned long> quantity( CBSize, 0 );
+    vector<vector<float>> means( CBSize, bfV );
+    while( itX != X.end() ){
+        for( int i=0; i < dimensionality; i++ ){
+            means[ *itIdx ][i] += (*itX).at( i );
+        }        
+        quantity[ *itIdx ]++;
+        itX++; itIdx++;
+    }
+    vector<vector<float>>::iterator itC( C.begin() ), itMeans( means.begin() );
+    itIdx = quantity.begin();
+    while( itIdx != quantity.end() ){
+        if( *itIdx != 0 ){
+            *itC = *itMeans;
+            VQm::vector_by_scalar_inplace( *itC,(float) 1/ *itIdx );
+        }
+        itC++; itIdx++; itMeans++;
+    }
+   
+}
+//finds nearest centroids indices and puts them into idx
+float coach::find_nearest_centroid( 
+    const vector<vector<float>>& X, 
+    const vector<vector<float>>& C, 
+    vector<unsigned long>& idx,
+    const int CBSizePow
+    )
+{
+    vector<vector<float>>::const_iterator itX( X.begin() ), itC( C.begin() );
+    long bookSize = pow( 2, CBSizePow ), i = 0;
+    //current position in X
+    unsigned long iX = 0;
+    float minDist, argMinDist, cost = 0 , bf;
+    while( itX != X.end() ){
+        i = argMinDist = 0;
+        idx[ iX ] = i;
+        minDist = VQm::L2distance( *itX, C[i] );
+        while( i < bookSize ){
+            if ( ( bf = VQm::L2distance( C[i], *itX ) ) < minDist ){
+                idx[ iX ] = i;
+                minDist = bf;
+            }
+            i++;
+        }
+        cost = cost + minDist;
+        iX++;
+        itX++;
+    }
+
+    return cost;
+    
+}
+//splits centroids and offsets them 
+void coach::split_and_move_centroids(
+    vector<vector<float>>& C,
+    const int CBCurrentSizePow,
+    const float eps
+    )
+{
+    unsigned long CBCurrentSize = pow( 2, CBCurrentSizePow );
+    copy_n( C.begin(), CBCurrentSize, C.begin() + CBCurrentSize );
+    for( unsigned long i = 0; i < CBCurrentSize; i++ ){
+        VQm::vector_by_scalar_inplace( C[i], ( 1 + eps ) );
+        VQm::vector_by_scalar_inplace( C[ CBCurrentSize + i ], ( 1 - eps ) );
+    }
+}
 //generates code book of size 2^n into C
 bool coach::train( 
         const vector<vector<float>>& X,
         vector<vector<float>>& C,
-        vector<long long>& idx,
+        vector<unsigned long>& idx,
         const int N,
         const float stepSize,
         const float distortionToll
@@ -351,100 +474,6 @@ bool coach::train(
         }
     }
     return true;
-}
-//finds mean vectors over  X elements belonging to one code
-//and stores them in C
-void coach::find_mean( 
-    const vector<vector<float>>& X, 
-    vector<vector<float>>& C, 
-    const vector<long long>& idx,
-    const long long CBSize
-    )
-{
-    vector<vector<float>>::const_iterator itX( X.begin() );
-    vector<long long>::const_iterator itIdx( idx.begin() );
-    int dimensionality = (*itX).size();
-    vector<float> bfV( dimensionality, 0.0 );
-    vector<long long> quantity( CBSize, 0 );
-    vector<vector<float>> means( CBSize, bfV );
-    while( itX != X.end() ){
-        for( int i=0; i < dimensionality; i++ ){
-            means[ *itIdx ][i] += (*itX).at( i );
-        }        
-        quantity[ *itIdx ]++;
-        itX++; itIdx++;
-    }
-    vector<vector<float>>::iterator itC( C.begin() ), itMeans( means.begin() );
-    itIdx = quantity.begin();
-    while( itIdx != quantity.end() ){
-        if( *itIdx != 0 ){
-            *itC = *itMeans;
-            VQm::vector_by_scalar_inplace( *itC,(float) 1/ *itIdx );
-        }
-        itC++; itIdx++; itMeans++;
-    }
-   
-}
-//finds nearest centroids indices and puts them into idx
-float coach::find_nearest_centroid( 
-    const vector<vector<float>>& X, 
-    const vector<vector<float>>& C, 
-    vector<long long>& idx,
-    const int CBSizePow
-    )
-{
-    vector<vector<float>>::const_iterator itX( X.begin() ), itC( C.begin() );
-    long bookSize = pow( 2, CBSizePow ), i = 0;
-    //current position in X
-    long long iX = 0;
-    float minDist, argMinDist, cost = 0 , bf;
-    while( itX != X.end() ){
-        i = argMinDist = 0;
-        idx[ iX ] = i;
-        minDist = VQm::L2distance( *itX, C[i] );
-        while( i < bookSize ){
-            if ( ( bf = VQm::L2distance( C[i], *itX ) ) < minDist ){
-                idx[ iX ] = i;
-                minDist = bf;
-            }
-            i++;
-        }
-        cost = cost + minDist;
-        iX++;
-        itX++;
-    }
-
-    return cost;
-    
-}
-//splits centroids and offsets them 
-void coach::split_and_move_centroids(
-    vector<vector<float>>& C,
-    const int CBCurrentSizePow,
-    const float eps
-    )
-{
-    long long CBCurrentSize = pow( 2, CBCurrentSizePow );
-    copy_n( C.begin(), CBCurrentSize, C.begin() + CBCurrentSize );
-    for( long long i = 0; i < CBCurrentSize; i++ ){
-        VQm::vector_by_scalar_inplace( C[i], ( 1 + eps ) );
-        VQm::vector_by_scalar_inplace( C[ CBCurrentSize + i ], ( 1 - eps ) );
-    }
-}
-//computes cost of a given code for a given data
-float coach::compute_cost( 
-    const vector<vector<float>>& X,
-    const vector<vector<float>>& C,
-    const vector<long long>& idx
-    )
-{
-    vector<vector<float>>::const_iterator itX( X.begin() );
-    vector<long long>::const_iterator itIdx( idx.begin() );
-    float cost = 0.0f;
-    while( itX != X.end() )
-        cost += VQm::L2distance( *itX++, C[ *itIdx++ ] );
-    
-    return cost;
 }
 
 
@@ -505,23 +534,37 @@ bool VQ::encode(void)
 }
 bool VQ::decode(void)
 {
-    return false;
+    return _c.decode(
+                _source,
+                _codeBook,
+                _encoded
+                );
+
 }
 bool VQ::load_source( const string file )
 {
-    return _io.read_binary( file, _source, _conf.dimensionality );
+    if( _io.read_binary( file, _source, _conf.dimensionality ) ){
+        _encoded.resize( _source.size(), 0 );
+        return true;
+    }
+    return false;
 }
 bool VQ::load_code_book( const string file )
 {
-    return false;
+    return _io.read_binary( file, _codeBook, _conf.dimensionality );
 }
 bool VQ::load_encoded( const string file )
 {
+    bit_stream bs( file, _conf.codeSizePower );
+    if( bs.good() ){
+        bs.read_all( _encoded );
+        return true;
+    }
     return false;
 }
 bool VQ::save_decoded( const string file )
 {
-    return false;
+    return _io.write_binary( file, _source );
 }
 bool VQ::save_code_book( const string file )
 {
@@ -530,8 +573,9 @@ bool VQ::save_code_book( const string file )
 bool VQ::save_encoded( const string file )
 {
     bit_stream bs( _encoded, _conf.codeSizePower );
-
-    
+    if( bs.good() ){
+        return bs.flush( file );
+    }
     return false;
 }
 

@@ -1,0 +1,3 @@
+-a ce -d 13 -n 7 -s ../base/base.dat -c ../base/codes.dat -e ../base/base.enc -o ../base/base.dec
+vq -a e -d 13 -n 5 -s ../base/base.dat -c ../base/codes5.dat -e ../base/base5.enc -o ../base/base.dec
+-a o -d 13 -n 7 -s ../tests/test.dat -c ../tests/codes.dat -e ../tests/test.enc -o ../tests/test.dec

@@ -38,9 +38,9 @@ class VQ_API bit_stream
     bool _streamIsGood;
     string _inputFile;
 
-    long long _bufferPos;
+    unsigned long _bufferPos;
     int _bufferPosIntra;
-    long long _bufferSize;
+    unsigned long _bufferSize;
     unsigned char* _buffer;
 
     void _init_defaults(void);
@@ -51,7 +51,7 @@ class VQ_API bit_stream
 
 public:
     bit_stream(void);
-    bit_stream( const int codeSize, const long long bufferSize );
+    bit_stream( const int codeSize, const unsigned long bufferSize );
     //reads the whole file and puts its content into _buffer
     bit_stream( const string inputFile, const int codeSize );
     //creates a proper formatted _buffer from input
@@ -67,11 +67,11 @@ public:
         const int offset 
         );
     //returns the amount of full codes in _buffer
-    long long count_codes(void);
+    unsigned long count_codes(void);
     //flushes the whole buffer into file
     bool flush( const string file );
     //show current buffer size
-    long long get_buffer_size(void);
+    unsigned long get_buffer_size(void);
     //returns status of the stream
     bool good(void);
     //parces the whole buffer and puts it into out
@@ -79,7 +79,7 @@ public:
     //reads single code
     unsigned long read_single(void);
     //puts carrets on bofferPos and bufferPosIntra if it's possible
-    void seek( long long bofferPos, int bufferPosIntra );
+    void seek( unsigned long bofferPos, int bufferPosIntra );
     //recreates buffer from  input
     void write_all( const vector<unsigned long> &input );
     //writes a single code in  buffer
@@ -129,7 +129,7 @@ class VQ_API coach
     //centroids (code book)
     vector<vector<float>> _C;
     //encoded data (indexes of _C elements
-    vector<long long> _idx;
+    vector<unsigned long> _idx;
     //features space dimensionality
     int _featuresNumber;
     //code book size is 2^_CBSizePower
@@ -138,31 +138,31 @@ class VQ_API coach
     float _stepSize, _distortionToll;
 
 public:
-    //generates code book of size 2^n into C
-    bool train( 
+    //computes cost of a given code for a given data
+    float compute_cost( 
         const vector<vector<float>>& X,
-        vector<vector<float>>& C,
-        vector<long long> &idx,
-        const int N,
-        const float stepSize,
-        const float distortionToll
+        const vector<vector<float>>& C,
+        const vector<unsigned long>& idx
+        ); 
+    //decodes idx by C and puts the result into X
+    bool decode(
+        vector<vector<float>>& X,
+        const vector<vector<float>>& C,
+        const vector<unsigned long>& idx
         );
-    bool train(void){
-        return train( _X, _C, _idx, _CBSizePower, _stepSize, _distortionToll );
-    }
     //finds mean vectors over  X elements belonging to one code
     //and stores them in C
     void find_mean( 
         const vector<vector<float>>& X, 
         vector<vector<float>>& C, 
-        const vector<long long>& idx,
-        const long long CBSize
+        const vector<unsigned long>& idx,
+        const unsigned long CBSize
         );
     //finds nearest centroids indices, puts them into idx and computes cost
     float find_nearest_centroid( 
         const vector<vector<float>>& X, 
         const vector<vector<float>>& C, 
-        vector<long long>& idx,
+        vector<unsigned long>& idx,
         const int CBSizePow
         );
     //splits centroids and offsets them 
@@ -171,13 +171,18 @@ public:
         const int CBCurrentSizePow,
         const float eps
         );
-    //computes cost of a given code for a given data
-    float compute_cost( 
+    //generates code book of size 2^n into C
+    bool train( 
         const vector<vector<float>>& X,
-        const vector<vector<float>>& C,
-        const vector<long long>& idx
+        vector<vector<float>>& C,
+        vector<unsigned long> &idx,
+        const int N,
+        const float stepSize,
+        const float distortionToll
         );
-
+    bool train(void){
+        return train( _X, _C, _idx, _CBSizePower, _stepSize, _distortionToll );
+    }
 };
 
 
@@ -192,7 +197,7 @@ class VQ_API VQ
     VQIO _io;
     vector<vector<float>> _source;
     vector<vector<float>> _codeBook;
-    vector<long long> _encoded;
+    vector<unsigned long> _encoded;
     coach _c;
 public:
     VQ(void);
